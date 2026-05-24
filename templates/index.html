@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f6fb;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 700; color: var(--primary); }
+    header span { font-size: 0.85rem; color: var(--muted); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.75rem; }
+    .tab-btn {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: all .15s;
+    }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1.25rem; }
+
+    /* ── Stats row ── */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+    }
+    .stat .label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat .value { font-size: 1.75rem; font-weight: 700; color: var(--text); }
+    .stat .sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* ── Form ── */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem; color: var(--muted); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: var(--surface);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--primary);
+    }
+    .form-actions { margin-top: 1rem; display: flex; gap: 0.75rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 0.55rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-danger { background: var(--danger-light); color: var(--danger); }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── Budget bars ── */
+    .budget-list { display: flex; flex-direction: column; gap: 1rem; }
+    .budget-item { }
+    .budget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.9rem; }
+    .budget-header strong { font-weight: 600; }
+    .budget-header .budget-meta { color: var(--muted); font-size: 0.82rem; display: flex; align-items: center; gap: 0.75rem; }
+    .progress-bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
+    .fill-ok { background: var(--success); }
+    .fill-warn { background: var(--warning); }
+    .fill-over { background: var(--danger); }
+
+    /* ── Expense list ── */
+    .expense-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .expense-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .expense-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .expense-table tr:last-child td { border-bottom: none; }
+    .expense-table tr:hover td { background: var(--bg); }
+    .category-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .amount-cell { font-weight: 700; }
+    .delete-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 0.25rem 0.5rem; border-radius: 6px; transition: color .15s, background .15s; }
+    .delete-btn:hover { color: var(--danger); background: var(--danger-light); }
+
+    /* ── Budget form ── */
+    .budget-set-form { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+    .budget-set-form .form-group { flex: 1; min-width: 140px; }
+
+    /* ── Month picker ── */
+    .month-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .month-row label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+    .month-row input[type="month"] {
+      padding: 0.45rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 0.9rem; }
+    .empty .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #1e293b;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .25s, transform .25s;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>💰 Expense Tracker</h1>
+  <span id="header-month"></span>
+</header>
+
+<div class="container">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('expenses')">Expenses</button>
+    <button class="tab-btn" onclick="switchTab('budgets')">Budgets</button>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div class="tab-panel active" id="tab-dashboard">
+    <div class="month-row">
+      <label>Month:</label>
+      <input type="month" id="dash-month" onchange="loadDashboard()" />
+    </div>
+
+    <div class="stats" id="stats-row">
+      <div class="stat">
+        <div class="label">Total Spent</div>
+        <div class="value" id="stat-total">—</div>
+        <div class="sub" id="stat-sub">this month</div>
+      </div>
+      <div class="stat">
+        <div class="label">Categories</div>
+        <div class="value" id="stat-cats">—</div>
+        <div class="sub">with spending</div>
+      </div>
+      <div class="stat">
+        <div class="label">Over Budget</div>
+        <div class="value" id="stat-over" style="color:var(--danger)">—</div>
+        <div class="sub">categories</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Spending vs. Budget</h2>
+      <div class="budget-list" id="budget-overview"></div>
+    </div>
+  </div>
+
+  <!-- ── EXPENSES ── -->
+  <div class="tab-panel" id="tab-expenses">
+    <div class="card">
+      <h2>Add Expense</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Amount ($)</label>
+          <input type="number" id="exp-amount" min="0.01" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="exp-category">
+            {% for cat in categories %}
+            <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="exp-date" />
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <input type="text" id="exp-desc" placeholder="e.g. Groceries at Trader Joe's" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addExpense()">Add Expense</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <h2 style="margin:0">Recent Expenses</h2>
+        <div class="month-row" style="margin:0">
+          <label>Month:</label>
+          <input type="month" id="exp-month" onchange="loadExpenses()" />
+        </div>
+      </div>
+      <div id="expenses-container">
+        <div class="empty"><div class="icon">📭</div>No expenses yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BUDGETS ── -->
+  <div class="tab-panel" id="tab-budgets">
+    <div class="card">
+      <h2>Set Monthly Budget</h2>
+      <div class="budget-set-form">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="bud-category">
+            {% for cat in categories %}
+            <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Monthly Limit ($)</label>
+          <input type="number" id="bud-limit" min="1" step="1" placeholder="500" />
+        </div>
+        <button class="btn btn-primary" onclick="setBudget()">Save Budget</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Current Budgets</h2>
+      <div id="budgets-list-container">
+        <div class="empty"><div class="icon">🎯</div>No budgets set yet.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  const fmt = (n) => '$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  function currentMonth() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#ef4444' : '#1e293b';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector(`#tab-${name}`).classList.add('active');
+    event.target.classList.add('active');
+    if (name === 'dashboard') loadDashboard();
+    if (name === 'expenses') loadExpenses();
+    if (name === 'budgets') loadBudgetsList();
+  }
+
+  // ── Dashboard ──────────────────────────────────────────────────────────────
+
+  async function loadDashboard() {
+    const month = document.getElementById('dash-month').value;
+    const res = await fetch(`/api/summary?month=${month}`);
+    const data = await res.json();
+
+    document.getElementById('stat-total').textContent = fmt(data.total_spent);
+    const withSpend = data.categories.filter(c => c.spent > 0).length;
+    const overBudget = data.categories.filter(c => c.budget && c.spent > c.budget).length;
+    document.getElementById('stat-cats').textContent = withSpend;
+    document.getElementById('stat-over').textContent = overBudget;
+
+    const container = document.getElementById('budget-overview');
+    if (data.categories.length === 0) {
+      container.innerHTML = `<div class="empty"><div class="icon">📊</div>No data for this month.</div>`;
+      return;
+    }
+
+    container.innerHTML = data.categories.map(c => {
+      const pct = c.budget ? Math.min((c.spent / c.budget) * 100, 100) : null;
+      const fillClass = !c.budget ? 'fill-ok' : c.spent > c.budget ? 'fill-over' : pct > 80 ? 'fill-warn' : 'fill-ok';
+      const budgetText = c.budget ? `${fmt(c.spent)} / ${fmt(c.budget)}` : `${fmt(c.spent)} (no limit)`;
+      return `
+        <div class="budget-item">
+          <div class="budget-header">
+            <strong>${c.category}</strong>
+            <div class="budget-meta">
+              <span>${budgetText}</span>
+              ${c.budget && c.spent > c.budget ? '<span style="color:var(--danger);font-weight:700">Over!</span>' : ''}
+            </div>
+          </div>
+          ${c.budget ? `
+          <div class="progress-bar">
+            <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
+          </div>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  // ── Expenses ───────────────────────────────────────────────────────────────
+
+  async function loadExpenses() {
+    const month = document.getElementById('exp-month').value;
+    const res = await fetch(`/api/expenses?month=${month}`);
+    const expenses = await res.json();
+    const container = document.getElementById('expenses-container');
+
+    if (expenses.length === 0) {
+      container.innerHTML = `<div class="empty"><div class="icon">📭</div>No expenses for this month.</div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="expense-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${expenses.map(e => `
+            <tr>
+              <td>${e.date}</td>
+              <td><span class="category-badge">${e.category}</span></td>
+              <td style="color:var(--muted)">${e.description || '—'}</td>
+              <td class="amount-cell">${fmt(e.amount)}</td>
+              <td><button class="delete-btn" onclick="deleteExpense(${e.id})" title="Delete">✕</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function addExpense() {
+    const amount = parseFloat(document.getElementById('exp-amount').value);
+    const category = document.getElementById('exp-category').value;
+    const date = document.getElementById('exp-date').value;
+    const description = document.getElementById('exp-desc').value;
+
+    if (!amount || amount <= 0) { showToast('Please enter a valid amount.', true); return; }
+    if (!date) { showToast('Please pick a date.', true); return; }
+
+    const res = await fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, category, date, description }),
+    });
+
+    if (res.ok) {
+      showToast('Expense added!');
+      document.getElementById('exp-amount').value = '';
+      document.getElementById('exp-desc').value = '';
+      loadExpenses();
+    } else {
+      showToast('Failed to add expense.', true);
+    }
+  }
+
+  async function deleteExpense(id) {
+    if (!confirm('Delete this expense?')) return;
+    await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+    showToast('Expense deleted.');
+    loadExpenses();
+    loadDashboard();
+  }
+
+  // ── Budgets ────────────────────────────────────────────────────────────────
+
+  async function loadBudgetsList() {
+    const res = await fetch('/api/budgets');
+    const budgets = await res.json();
+    const container = document.getElementById('budgets-list-container');
+
+    if (budgets.length === 0) {
+      container.innerHTML = `<div class="empty"><div class="icon">🎯</div>No budgets set yet.</div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="expense-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Monthly Limit</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${budgets.map(b => `
+            <tr>
+              <td><span class="category-badge">${b.category}</span></td>
+              <td class="amount-cell">${fmt(b.monthly_limit)}</td>
+              <td><button class="delete-btn" onclick="deleteBudget(${b.id})" title="Remove">✕</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function setBudget() {
+    const category = document.getElementById('bud-category').value;
+    const monthly_limit = parseFloat(document.getElementById('bud-limit').value);
+    if (!monthly_limit || monthly_limit <= 0) { showToast('Please enter a valid limit.', true); return; }
+
+    const res = await fetch('/api/budgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category, monthly_limit }),
+    });
+
+    if (res.ok) {
+      showToast('Budget saved!');
+      document.getElementById('bud-limit').value = '';
+      loadBudgetsList();
+    } else {
+      showToast('Failed to save budget.', true);
+    }
+  }
+
+  async function deleteBudget(id) {
+    if (!confirm('Remove this budget?')) return;
+    await fetch(`/api/budgets/${id}`, { method: 'DELETE' });
+    showToast('Budget removed.');
+    loadBudgetsList();
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+
+  (function init() {
+    const month = currentMonth();
+    document.getElementById('dash-month').value = month;
+    document.getElementById('exp-month').value = month;
+    document.getElementById('exp-date').value = new Date().toISOString().slice(0, 10);
+
+    const d = new Date();
+    document.getElementById('header-month').textContent =
+      d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    loadDashboard();
+  })();
+</script>
+</body>
+</html>
